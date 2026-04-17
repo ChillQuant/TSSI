@@ -1,0 +1,81 @@
+name: tssi
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    platform: linux/arm64
+    container_name: tssi-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tssi}
+      POSTGRES_USER: ${POSTGRES_USER:-tssi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tssi_dev_password}
+      TZ: Asia/Bangkok
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - timescale_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tssi} -d ${POSTGRES_DB:-tssi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - tssi-net
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64
+    platform: linux/arm64
+    container_name: tssi-api
+    restart: unless-stopped
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      # ---- Application ----
+      APP_ENV: ${APP_ENV:-development}
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      API_KEY: ${API_KEY:-change-me-in-prod}
+
+      # ---- Database (async DSN consumed by SQLAlchemy + asyncpg) ----
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-tssi}
+      POSTGRES_USER: ${POSTGRES_USER:-tssi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tssi_dev_password}
+
+      # ---- Scraper / Proxy ----
+      # Optional upstream proxy for Playwright (e.g. http://user:pass@host:port)
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      PROXY_SERVER: ${PROXY_SERVER:-}
+      PROXY_USERNAME: ${PROXY_USERNAME:-}
+      PROXY_PASSWORD: ${PROXY_PASSWORD:-}
+      SCRAPER_HEADLESS: ${SCRAPER_HEADLESS:-true}
+      SCRAPER_TIMEOUT_MS: ${SCRAPER_TIMEOUT_MS:-30000}
+
+      # ---- Index config ----
+      TSSI_BASELINE_DATE: ${TSSI_BASELINE_DATE:-2024-01-01}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    volumes:
+      - ./app:/srv/app:ro
+      - ./alembic:/srv/alembic:ro
+      - ./alembic.ini:/srv/alembic.ini:ro
+    networks:
+      - tssi-net
+
+volumes:
+  timescale_data:
+    driver: local
+
+networks:
+  tssi-net:
+    driver: bridge

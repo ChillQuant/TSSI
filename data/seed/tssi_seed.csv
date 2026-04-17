@@ -1,0 +1,73 @@
+day,asset_name,platform_source,nominal_price,net_weight,unit_type,note
+# -----------------------------------------------------------------------------
+# TSSI hand-curated anchor points.
+#
+# This file is the source of truth for known retail observations that we
+# can't reliably recover via Wayback (receipts, news clippings, personal
+# 7-Eleven/Makro visits, retail PDF catalogs, etc). It also feeds the
+# bot_cpi backfill adapter - the BoT CPI series multiplies these anchors
+# to fill months that have neither a live scrape, a Wayback snapshot,
+# nor an entry here.
+#
+# The rows below are desk estimates based on publicly-reported Thai
+# retail prices for these three staples. They are marked ``seed:estimate``
+# so the "Source mix" panel bins them honestly and so they can be
+# replaced by ``seed:receipt`` rows as real receipts are collected.
+#
+# Columns
+#   day               Bangkok-local date (YYYY-MM-DD).
+#   asset_name        One of: mahboonkrong_rice_5kg | mama_tomyum_pack |
+#                     ezygo_kaphrao_box | crystal_water_600ml | m150_bottle.
+#   platform_source   "seed:estimate" for desk estimates, "seed:receipt"
+#                     for verified retail receipts, "seed:news" for
+#                     price changes reported in Thai business press.
+#   nominal_price     THB, pre-tax. 2 decimals for retail clarity.
+#   net_weight        Canonical units: g for solids, ml for M-150.
+#   unit_type         "g" or "ml" - matches the DB CHECK constraint.
+#   note              Free-form provenance note (optional).
+# -----------------------------------------------------------------------------
+2020-01-15,mama_tomyum_pack,seed:estimate,6.00,55,g,retail list price 2020 Q1
+2020-07-15,mama_tomyum_pack,seed:estimate,6.00,55,g,stable through 2020
+2021-07-15,mama_tomyum_pack,seed:estimate,6.00,55,g,stable through 2021
+2022-01-15,mama_tomyum_pack,seed:estimate,6.00,55,g,pre-Ukraine shock
+2022-07-15,mama_tomyum_pack,seed:estimate,6.50,55,g,first retail raise during 2022 price shock
+2023-07-15,mama_tomyum_pack,seed:estimate,7.00,55,g,raise to 7 THB retail ceiling
+2024-07-15,mama_tomyum_pack,seed:estimate,7.00,55,g,price ceiling held
+2025-07-15,mama_tomyum_pack,seed:estimate,7.00,55,g,price ceiling held
+2020-01-15,m150_bottle,seed:estimate,10.00,150,ml,retail list price 2020 Q1
+2020-07-15,m150_bottle,seed:estimate,10.00,150,ml,stable
+2021-07-15,m150_bottle,seed:estimate,10.00,150,ml,stable
+2022-07-15,m150_bottle,seed:estimate,10.00,150,ml,stable despite Ukraine shock
+2023-07-15,m150_bottle,seed:estimate,12.00,150,ml,Osotspa raised retail price 2023
+2024-07-15,m150_bottle,seed:estimate,12.00,150,ml,stable
+2025-07-15,m150_bottle,seed:estimate,12.00,150,ml,stable
+2020-07-15,ezygo_kaphrao_box,seed:estimate,55.00,200,g,EZYGO launch pricing
+2021-07-15,ezygo_kaphrao_box,seed:estimate,55.00,200,g,pandemic holdover
+2022-07-15,ezygo_kaphrao_box,seed:estimate,59.00,200,g,mid-2022 chilled-box price revision
+2023-07-15,ezygo_kaphrao_box,seed:estimate,65.00,200,g,2023 menu refresh
+2024-07-15,ezygo_kaphrao_box,seed:estimate,69.00,200,g,2024 retail uptick
+2025-07-15,ezygo_kaphrao_box,seed:estimate,75.00,200,g,2025 menu refresh
+2026-01-15,ezygo_kaphrao_box,seed:estimate,79.00,200,g,2026 Q1 retail bump
+2020-01-15,mahboonkrong_rice_5kg,seed:estimate,180.00,5000,g,retail list price 2020 Q1 (5kg jasmine)
+2020-07-15,mahboonkrong_rice_5kg,seed:estimate,182.00,5000,g,mid-2020 paddy supply steady
+2021-01-15,mahboonkrong_rice_5kg,seed:estimate,185.00,5000,g,2021 harvest uptick
+2021-07-15,mahboonkrong_rice_5kg,seed:estimate,188.00,5000,g,holdover through 2021
+2022-01-15,mahboonkrong_rice_5kg,seed:estimate,192.00,5000,g,pre-Ukraine shock
+2022-07-15,mahboonkrong_rice_5kg,seed:estimate,198.00,5000,g,Ukraine shock spillover
+2023-01-15,mahboonkrong_rice_5kg,seed:estimate,205.00,5000,g,2023 export-demand spike
+2023-07-15,mahboonkrong_rice_5kg,seed:estimate,215.00,5000,g,India rice export curb spillover
+2024-01-15,mahboonkrong_rice_5kg,seed:estimate,218.00,5000,g,2024 Q1 retail list
+2024-07-15,mahboonkrong_rice_5kg,seed:estimate,222.00,5000,g,2024 paddy support price
+2025-01-15,mahboonkrong_rice_5kg,seed:estimate,226.00,5000,g,2025 retail catch-up
+2025-07-15,mahboonkrong_rice_5kg,seed:estimate,230.00,5000,g,2025 retail bump
+2026-01-15,mahboonkrong_rice_5kg,seed:estimate,233.00,5000,g,2026 Q1 holdover
+2026-04-15,mahboonkrong_rice_5kg,seed:estimate,235.00,5000,g,2026 mid-April retail list
+2020-01-15,crystal_water_600ml,seed:estimate,6.00,600,ml,retail list price 2020 Q1
+2020-07-15,crystal_water_600ml,seed:estimate,6.00,600,ml,stable
+2021-07-15,crystal_water_600ml,seed:estimate,6.00,600,ml,stable
+2022-07-15,crystal_water_600ml,seed:estimate,6.00,600,ml,pandemic holdover
+2023-01-15,crystal_water_600ml,seed:estimate,6.50,600,ml,PET cost uptick
+2023-07-15,crystal_water_600ml,seed:estimate,6.50,600,ml,stable
+2024-07-15,crystal_water_600ml,seed:estimate,7.00,600,ml,2024 price revision at retail
+2025-07-15,crystal_water_600ml,seed:estimate,7.00,600,ml,held through 2025
+2026-04-15,crystal_water_600ml,seed:estimate,7.00,600,ml,2026 mid-April retail list

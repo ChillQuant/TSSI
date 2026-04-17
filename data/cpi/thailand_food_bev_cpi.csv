@@ -1,0 +1,95 @@
+year_month,cpi_value
+# -----------------------------------------------------------------------------
+# Bank of Thailand monthly CPI sub-index for "Food and non-alcoholic beverages"
+# (group 01 in the BoT/NESDC classification). Values are scaled such that
+# the 2019 calendar-year average = 100.
+#
+# Source: https://www.bot.or.th/english/statistics/  (Thailand CPI - select
+# the food & bev sub-index; download the monthly series; normalize so the
+# 2019 average is 100).
+#
+# The values below are desk approximations of the publicly-reported series
+# for the purpose of enabling the bot_cpi backfill adapter. Replace with
+# authoritative values pulled from BoT when available. The relative shape
+# matters more than absolute precision for the interpolation logic.
+#
+# Columns
+#   year_month   YYYY-MM (1st-of-month is assumed).
+#   cpi_value    Scaled CPI index value (float).
+# -----------------------------------------------------------------------------
+2020-01,100.2
+2020-02,100.1
+2020-03,100.3
+2020-04,101.0
+2020-05,101.4
+2020-06,101.6
+2020-07,101.7
+2020-08,101.8
+2020-09,101.9
+2020-10,102.1
+2020-11,102.3
+2020-12,102.5
+2021-01,100.5
+2021-02,100.2
+2021-03,100.1
+2021-04,100.3
+2021-05,100.5
+2021-06,100.7
+2021-07,100.9
+2021-08,101.0
+2021-09,101.1
+2021-10,101.3
+2021-11,101.7
+2021-12,102.1
+2022-01,102.8
+2022-02,103.4
+2022-03,104.2
+2022-04,105.3
+2022-05,106.3
+2022-06,107.1
+2022-07,108.0
+2022-08,108.5
+2022-09,108.9
+2022-10,109.1
+2022-11,109.3
+2022-12,109.5
+2023-01,110.2
+2023-02,110.9
+2023-03,111.4
+2023-04,111.9
+2023-05,112.3
+2023-06,112.5
+2023-07,112.6
+2023-08,112.7
+2023-09,112.8
+2023-10,112.9
+2023-11,113.0
+2023-12,113.1
+2024-01,113.4
+2024-02,113.5
+2024-03,113.7
+2024-04,113.8
+2024-05,113.9
+2024-06,114.0
+2024-07,114.1
+2024-08,114.2
+2024-09,114.3
+2024-10,114.4
+2024-11,114.5
+2024-12,114.7
+2025-01,114.9
+2025-02,115.0
+2025-03,115.1
+2025-04,115.2
+2025-05,115.3
+2025-06,115.4
+2025-07,115.6
+2025-08,115.7
+2025-09,115.8
+2025-10,115.9
+2025-11,116.0
+2025-12,116.2
+2026-01,116.4
+2026-02,116.5
+2026-03,116.6
+2026-04,116.8

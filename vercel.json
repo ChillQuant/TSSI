@@ -1,0 +1,21 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "python3 -m pip install -r requirements.txt",
+  "buildCommand": "python3 scripts/build_static.py --clean",
+  "outputDirectory": "dist",
+  "rewrites": [
+    { "source": "/methodology", "destination": "/methodology/index.html" },
+    {
+      "source": "/api/v1/tssi/current",
+      "destination": "/api/v1/tssi/current.json"
+    },
+    {
+      "source": "/api/v1/tssi/historical",
+      "destination": "/api/v1/tssi/historical.json"
+    },
+    {
+      "source": "/api/v1/tssi/assets/ppu",
+      "destination": "/api/v1/tssi/assets/ppu.json"
+    }
+  ]
+}

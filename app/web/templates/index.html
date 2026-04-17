@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Thai Street Survival Index (TSSI) — a real-time, shrinkflation-adjusted composite metric for Thailand built on a five-asset PPU micro-basket (rice, noodles, ready meals, water, energy drink) anchored to January 2020 = 100." />
+    <title>Thai Street Survival Index (TSSI) — Thailand Shrinkflation Tracker</title>
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>🇹🇭</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/main.css" />
+</head>
+<body>
+    <header class="masthead">
+        <div class="masthead-inner">
+            <a class="wordmark" href="/">
+                <span class="mark">TSSI</span>
+                <span class="strap">Thai Street Survival Index</span>
+            </a>
+            <nav class="nav-links">
+                <a href="#summary">Summary</a>
+                <a href="#basket">Basket</a>
+                <a href="#chart">Chart</a>
+                <a href="#proxies">Proxies</a>
+                <a href="#decomposition">Decomposition</a>
+                <a href="/methodology">Methodology</a>
+                <a href="/docs" target="_blank" rel="noopener">API ↗</a>
+            </nav>
+        </div>
+    </header>
+
+    {% if demo_mode %}
+    <div class="demo-banner">
+        <span class="demo-dot"></span>
+        <strong>Demo mode</strong> — served from {{ observation_count }} synthetic observations over {{ series_length }} days. Turn off <code>DEMO_MODE</code> and point at a live TimescaleDB to serve real scrapes.
+    </div>
+    {% endif %}
+
+    <div class="pilot-banner" role="note">
+        <span class="pilot-tag">Educational pilot</span>
+        <span class="pilot-text">
+            This is a methodological prototype, not a production inflation tracker. The framework, calculation engine, and API are production-grade; the underlying historical series is reconstructed from BoT food-CPI anchored to hand-curated retail estimates &mdash; see
+            <a href="/methodology#provenance">data provenance</a> and the
+            <a href="/methodology#roadmap">data roadmap</a> for the path to fully independent observations.
+        </span>
+    </div>
+
+    <header id="summary" class="hero">
+        <div class="hero-inner">
+            <div class="hero-left">
+                <p class="eyebrow">
+                    <span class="flag">🇹🇭</span>
+                    Thailand &middot; Shrinkflation-adjusted index (educational pilot)
+                </p>
+                <h1>Thailand's baseline-survival cost, measured in baht per gram.</h1>
+                <p class="lede">
+                    The Thai Street Survival Index (TSSI) is a localized, shrinkflation-adjusted composite that tracks the real cost of five factory-sealed Thai staples by <strong>price per unit</strong>. It is engineered to isolate the erosion of purchasing power that headline CPI &mdash; constrained by energy subsidies and broad-basket weighting &mdash; structurally misses.
+                </p>
+                <div class="hero-meta">
+                    <div class="meta">
+                        <span class="meta-label">Basket weights</span>
+                        <span class="meta-value">25 / 15 / 35 / 15 / 10</span>
+                    </div>
+                    <div class="meta">
+                        <span class="meta-label">Baseline</span>
+                        <span class="meta-value">{{ baseline_date }} = 100</span>
+                    </div>
+                    <div class="meta">
+                        <span class="meta-label">Smoothing</span>
+                        <span class="meta-value">{{ metadata.smoothing_applied }}</span>
+                    </div>
+                    <div class="meta">
+                        <span class="meta-label">Pipeline status</span>
+                        <span class="meta-value status-{{ metadata.status }}">{{ metadata.status | capitalize }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-right">
+                <div class="big-card delta-{{ hero.sym_class }}">
+                    <div class="big-label">TSSI Composite · {{ hero.day }}</div>
+                    <div class="big-value">{{ hero.index_value }}</div>
+                    <div class="big-delta">
+                        <span class="arrow">{{ hero.arrow }}</span>
+                        <span class="pct">{{ hero.sym_pct }}</span>
+                        <span class="sep">vs {{ baseline_date }}</span>
+                    </div>
+                    <div class="big-sub">
+                        Cumulative growth since baseline: <strong>{{ cumulative_growth }} pts</strong>
+                        &nbsp;·&nbsp; Composite PPU ฿ {{ hero.composite_ppu }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <section id="scr" class="section scr">
+        <div class="section-head">
+            <p class="exhibit-tag">Section 2 · Rationale</p>
+            <h2 class="insight">Why the headline inflation rate doesn't describe a Bangkok kitchen.</h2>
+            <p class="dek">
+                CPI weighting plus Price-Pack Architecture produces a widening phantom spread between official inflation and street-level survival costs. The TSSI closes that spread by measuring the exact price per gram / millilitre of a narrow, inelastic basket.
+            </p>
+        </div>
+
+        <div class="scr-grid">
+            <article class="scr-card">
+                <p class="scr-tag">Situation</p>
+                <h3>CPI is dominated by subsidized, volatile categories.</h3>
+                <p>Energy and raw food drive ~90% of headline CPI movement. With state subsidies on electricity and fuel, the Ministry of Commerce's 2025 print came in at <strong>−0.14%</strong>. Core inflation stripped of those categories is still positive at <strong>+0.60%</strong> year-over-year.</p>
+            </article>
+            <article class="scr-card">
+                <p class="scr-tag">Complication</p>
+                <h3>FMCG manufacturers protect margin through shrinkflation.</h3>
+                <p>Rather than raise nominal shelf prices, manufacturers cut net weight or volume (Price-Pack Architecture). An Ipsos survey finds <strong>39% of Thai consumers</strong> actively notice size reductions while prices hold. Broad-basket CPI methodologies smooth over this.</p>
+            </article>
+            <article class="scr-card">
+                <p class="scr-tag">Resolution</p>
+                <h3>A PPU-adjusted micro-basket detects shrinkflation on arithmetic.</h3>
+                <p>The TSSI tracks five standardized, factory-sealed staples at <code>price ÷ weight</code>. Any covert volume cut registers as a unit-price increase <em>on the day it happens</em>. No state subsidy can mask it.</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="basket" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Section 3 · The basket</p>
+            <h2 class="insight">Five standardized Thai staples, COICOP-mapped to NSO household expenditure.</h2>
+            <p class="dek">Weights are derived from the NSO Household Socio-Economic Survey (COICOP 2018), normalized to 100%. Rationale text is paraphrased from the TSSI brief §3.1. Current PPU values are pipeline output, imputation-aware &mdash; see <a href="/methodology#provenance">data provenance</a> for how the historical series is constructed.</p>
+        </div>
+
+        <div class="cards cards-5">
+            {% for a in asset_cards %}
+            <article class="card" data-asset="{{ a.asset_key }}">
+                <header class="card-head">
+                    <span class="emoji">{{ a.emoji }}</span>
+                    <div class="card-titles">
+                        <h3>{{ a.display_name }}</h3>
+                        <p>{{ a.tagline }} · <span class="muted">{{ a.platform }}</span></p>
+                        <p class="coicop">{{ a.coicop_category }}</p>
+                    </div>
+                    <span class="weight-pill">{{ a.weight_pct }}%</span>
+                </header>
+
+                <dl class="metrics">
+                    <div class="metric">
+                        <dt>Nominal price (latest real)</dt>
+                        <dd>{{ a.nominal_price }}</dd>
+                    </div>
+                    <div class="metric">
+                        <dt>Net weight / volume</dt>
+                        <dd>{{ a.net_weight }}</dd>
+                    </div>
+                    <div class="metric">
+                        <dt>Current PPU</dt>
+                        <dd class="accent-value">฿ {{ a.current_ppu }} / {{ a.unit }}</dd>
+                    </div>
+                    <div class="metric">
+                        <dt>vs {{ baseline_date }}</dt>
+                        <dd class="delta delta-{{ a.delta_class }}">
+                            <span class="arrow">{{ a.arrow }}</span> {{ a.delta_pct }}
+                        </dd>
+                    </div>
+                </dl>
+
+                <p class="rationale">{{ a.rationale }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="chart" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Chart 1</p>
+            <h2 class="insight">Composite index and per-asset PPU, rebased to {{ baseline_date }} = 100.</h2>
+            <p class="dek">TSSI composite on top, five basket constituents below. Each asset line is normalized to its own first observation so the chart compares relative drift, not absolute price levels. Per brief §3.3 the per-asset PPU is pre-smoothed with a 7-day rolling median.</p>
+        </div>
+
+        <div class="chart-card">
+            <div class="chart-legend">
+                <span class="dot" style="--c: #B00020;"></span><span>TSSI composite</span>
+                <span class="dot" style="--c: #9A7B34;"></span><span>Mahboonkrong Rice 5kg</span>
+                <span class="dot" style="--c: #262A33;"></span><span>Mama Tom Yum Koong</span>
+                <span class="dot" style="--c: #10B981;"></span><span>EZYGO Kaphrao</span>
+                <span class="dot" style="--c: #2E8BCC;"></span><span>Crystal Water 600ml</span>
+                <span class="dot" style="--c: #66707A;"></span><span>M-150</span>
+            </div>
+            <div class="chart-wrap">
+                <canvas id="tssi-chart"></canvas>
+            </div>
+        </div>
+        <p class="chart-source"><strong>Source:</strong> Thai Street Survival Index composite, retrieved {{ hero.day }}. Baseline {{ baseline_date }} = 100.</p>
+    </section>
+
+    <section id="decomposition" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Exhibit · Per-asset decomposition</p>
+            <h2 class="insight">Decomposing the composite drift since {{ baseline_date }}.</h2>
+            <p class="dek">The composite's cumulative growth is driven unevenly across the basket. Ranked by contribution (largest drift first); data is live pipeline output, not a static snapshot from the brief.</p>
+        </div>
+
+        <div class="decomp-wrap">
+            <ol class="decomp-list">
+                {% for a in asset_cards | sort(attribute='delta_pct_raw', reverse=True) %}
+                <li class="decomp-row">
+                    <span class="decomp-rank">{{ loop.index }}</span>
+                    <div class="decomp-body">
+                        <span class="decomp-name">{{ a.display_name }}</span>
+                        <span class="decomp-coicop">{{ a.coicop_category }} · weight {{ a.weight_pct }}%</span>
+                    </div>
+                    <span class="decomp-delta delta-{{ a.delta_class }}">{{ a.delta_pct }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </section>
+
+    <section id="proxies" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Table 1 · Proxy rubric</p>
+            <h2 class="insight">How the TSSI scores against other cited Thai inflation proxies.</h2>
+            <p class="dek">Rubric from TSSI brief §5. Anchors: 10 = standardized, mathematically resistant to manipulation; 5 = partial standardization, vulnerable to alteration; 1 = subjective / detached from survival consumption.</p>
+        </div>
+
+        <div class="table-wrap">
+            <table class="alt-proxy">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th class="num">Data rigidity</th>
+                        <th class="num">Cultural relevance</th>
+                        <th class="num">Shrinkflation resistance</th>
+                        <th>Editorial verdict</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in alt_proxies %}
+                    <tr class="{% if p.highlight %}row-highlight{% endif %}">
+                        <td class="proxy-name">{{ p.name }}</td>
+                        <td class="num">{{ p.rigidity }}</td>
+                        <td class="num">{% if p.cultural is none %}N/A{% else %}{{ p.cultural }}{% endif %}</td>
+                        <td class="num">{{ p.shrink }}</td>
+                        <td class="verdict">{{ p.verdict }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    {% if source_mix.has_data %}
+    <section id="provenance" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Chart 2 · Data provenance</p>
+            <h2 class="insight">Every observation is labelled by origin.</h2>
+            <p class="dek">
+                Share of observations by source kind, full window. Live scrapes
+                feed the index in real time; Wayback archives and hand-curated
+                seed anchors reconstruct the historical tail; CPI-derived rows
+                fill months between real anchors using the Bank of Thailand
+                processed-food sub-index.
+            </p>
+        </div>
+
+        <div class="mix-card">
+            <div class="mix-legend">
+                {% for kind in ['scrape', 'archive', 'seed', 'derived'] %}
+                {% set meta = source_mix.totals.get(kind, 0) %}
+                <span class="mix-key"
+                      style="--c: {% if kind == 'scrape' %}#B00020{% elif kind == 'archive' %}#262A33{% elif kind == 'seed' %}#8C96A0{% else %}#D9D0C4{% endif %};">
+                    <span class="dot"></span>
+                    <span class="label">
+                        {% if kind == 'scrape' %}Live scrape
+                        {% elif kind == 'archive' %}Wayback archive
+                        {% elif kind == 'seed' %}Seed (manual)
+                        {% else %}CPI-derived
+                        {% endif %}
+                    </span>
+                    <span class="count">{{ meta }}</span>
+                </span>
+                {% endfor %}
+            </div>
+
+            <ol class="mix-years">
+                {% for y in source_mix.years %}
+                <li class="mix-year">
+                    <span class="mix-year-label">{{ y.year }}</span>
+                    <div class="mix-bar" role="img"
+                         aria-label="Year {{ y.year }}: {{ y.total }} observations across provenance buckets.">
+                        {% for seg in y.segments %}
+                        {% if seg.count > 0 %}
+                        <span class="mix-seg"
+                              style="width: {{ seg.pct }}%; background: {{ seg.color }};"
+                              title="{{ seg.label }}: {{ seg.count }} ({{ seg.pct }}%)"></span>
+                        {% endif %}
+                        {% endfor %}
+                    </div>
+                    <span class="mix-year-total">{{ y.total }} rows</span>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </section>
+    {% endif %}
+
+    <section id="table" class="section">
+        <div class="section-head">
+            <p class="exhibit-tag">Table 2 · Recent composite</p>
+            <h2 class="insight">Sixty most recent days of the composite, latest first.</h2>
+            <p class="dek">
+                Values flagged <span class="pill-imp">ffill</span> are forward-filled from the most recent observation &mdash; the scrape for that asset failed or was skipped. After three consecutive days the asset is flagged <span class="pill-imp">missing</span> and dropped from the composite (weight renormalized; brief §3.2).
+            </p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th class="num">Composite ฿/unit</th>
+                        <th class="num">Index</th>
+                        <th class="num">Sym Δ</th>
+                        <th class="num">Rice</th>
+                        <th class="num">Mama</th>
+                        <th class="num">EZYGO</th>
+                        <th class="num">Water</th>
+                        <th class="num">M-150</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in table_rows %}
+                    <tr>
+                        <td class="day">{{ r.day }}</td>
+                        <td class="num">฿ {{ r.composite_ppu }}</td>
+                        <td class="num strong">{{ r.index_value }}</td>
+                        <td class="num delta-{{ r.sym_class }}">{{ r.sym_pct }}</td>
+                        <td class="num">
+                            ฿ {{ r.rice }}{% if r.rice_imputed %} <span class="pill-imp">ffill</span>{% endif %}
+                        </td>
+                        <td class="num">
+                            ฿ {{ r.mama }}{% if r.mama_imputed %} <span class="pill-imp">ffill</span>{% endif %}
+                        </td>
+                        <td class="num">
+                            ฿ {{ r.ezygo }}{% if r.ezygo_imputed %} <span class="pill-imp">ffill</span>{% endif %}
+                        </td>
+                        <td class="num">
+                            ฿ {{ r.water }}{% if r.water_imputed %} <span class="pill-imp">ffill</span>{% endif %}
+                        </td>
+                        <td class="num">
+                            ฿ {{ r.m150 }}{% if r.m150_imputed %} <span class="pill-imp">ffill</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section id="methodology-preview" class="section methodology">
+        <div class="section-head">
+            <p class="exhibit-tag">Section 7 · Methodology</p>
+            <h2 class="insight">Built to be audited, not trusted.</h2>
+            <p class="dek">The full conceptual framework &mdash; basket derivation, data intake, imputation, smoothing, alternative-proxy analysis, and empirical validation &mdash; lives on the methodology page.</p>
+        </div>
+
+        <div class="methodology-preview">
+            <ol class="steps">
+                <li>
+                    <h4>Five-asset basket</h4>
+                    <p>Rice, Mama, EZYGO, Crystal water, M-150 &mdash; each a factory-sealed, COICOP-mapped Thai staple (brief §3.1).</p>
+                </li>
+                <li>
+                    <h4>Price per unit</h4>
+                    <p>PPU = <code>nominal_price / net_weight</code>, enforced as a database <strong>GENERATED ALWAYS</strong> column so shrinkflation registers mathematically.</p>
+                </li>
+                <li>
+                    <h4>Imputation &amp; smoothing</h4>
+                    <p>Forward-fill capped at <strong>3 consecutive days</strong>; beyond that, an asset is flagged structurally missing and the composite renormalizes its weight. Per-asset PPU is smoothed with a <strong>7-day rolling median</strong>.</p>
+                </li>
+                <li>
+                    <h4>Composite &amp; normalization</h4>
+                    <p>Weighted mean of per-asset PPU, normalized to 100 on {{ baseline_date }}. Symmetric percent change bounded in (&minus;2, +2).</p>
+                </li>
+            </ol>
+            <p class="method-link">
+                <a href="/methodology">Read the full conceptual framework &amp; empirical validation &rarr;</a>
+            </p>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <span class="brand-name">TSSI</span>
+            <span class="sep">—</span>
+            <span>Thai Street Survival Index</span>
+            <span class="sep">—</span>
+            <a href="/methodology">Methodology</a>
+            <span class="sep">·</span>
+            <a href="/docs" target="_blank" rel="noopener">OpenAPI</a>
+        </div>
+    </footer>
+
+    <script>window.__TSSI_CHART__ = {{ chart_data_json | safe }};</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="/static/js/chart.js"></script>
+</body>
+</html>

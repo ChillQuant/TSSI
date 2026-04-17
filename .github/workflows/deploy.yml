@@ -1,0 +1,77 @@
+name: Build and deploy TSSI
+
+# Rebuilds the static site from data/observations.csv on every push to
+# main that touches the site's source (CSV, template, CSS, JS, or build
+# script) and publishes dist/ to Cloudflare Pages.
+#
+# Weekly update workflow for the operator:
+#   1. Append one row per asset for today's date to data/observations.csv.
+#   2. git commit -am "data: YYYY-MM-DD observations" && git push
+#   3. This workflow rebuilds and deploys automatically (~45 s).
+#
+# One-time setup (see docs/PUBLISHING.md):
+#   - Create a Cloudflare Pages project named "tssi" (or change PROJECT_NAME).
+#   - Add repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/**"
+      - "app/**"
+      - "scripts/build_static.py"
+      - "scripts/backfill_to_csv.py"
+      - "requirements.txt"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch: {}
+
+concurrency:
+  group: tssi-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+env:
+  PROJECT_NAME: tssi
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build static site
+        run: |
+          python scripts/build_static.py --clean -v
+          echo "---"
+          echo "dist/ contents:"
+          find dist -maxdepth 3 -type f | sort
+          echo "---"
+          echo "index.html size: $(wc -c < dist/index.html) bytes"
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ env.PROJECT_NAME }}
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: main

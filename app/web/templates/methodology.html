@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="TSSI Methodology — conceptual framework, data intake architecture, imputation logic, smoothing strategy, alternative proxy analysis, and empirical validation with live-computed Appendix A statistics." />
+    <title>Methodology · Thai Street Survival Index</title>
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>🇹🇭</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/main.css" />
+</head>
+<body class="methodology-page">
+    <header class="masthead">
+        <div class="masthead-inner">
+            <a class="wordmark" href="/">
+                <span class="mark">TSSI</span>
+                <span class="strap">Thai Street Survival Index</span>
+            </a>
+            <nav class="nav-links">
+                <a href="/">Home</a>
+                <a href="#brief">Brief</a>
+                <a href="#method">Method</a>
+                <a href="#limitations">Limits</a>
+                <a href="#proxies">Proxies</a>
+                <a href="#appendix">Appendix</a>
+                <a href="#roadmap">Roadmap</a>
+                <a href="/docs" target="_blank" rel="noopener">API ↗</a>
+            </nav>
+        </div>
+    </header>
+
+    {% if demo_mode %}
+    <div class="demo-banner">
+        <span class="demo-dot"></span>
+        <strong>Demo mode</strong> — Appendix statistics below are computed live against the demo observation set.
+    </div>
+    {% endif %}
+
+    <div class="pilot-banner" role="note">
+        <span class="pilot-tag">Educational pilot</span>
+        <span class="pilot-text">
+            This document is a methodological prototype. The framework, weighting scheme, imputation logic, calculation engine, and API are the deliverable. The historical series that populates the charts is reconstructed from Bank of Thailand food CPI anchored to hand-curated retail estimates &mdash; see <a href="#provenance">Appendix A.2</a> for the exact provenance split and <a href="#roadmap">the data roadmap</a> for the path to fully independent observations.
+        </span>
+    </div>
+
+    <article class="research-note">
+
+        <header class="rn-head">
+            <p class="eyebrow"><span class="flag">🇹🇭</span> TSSI · Conceptual Framework &amp; Pilot Design Brief</p>
+            <h1>The Thai Street Survival Index.</h1>
+            <p class="lede">
+                A localized, shrinkflation-adjusted composite metric engineered to track the unadulterated cost of baseline survival in Thailand &mdash; by pricing five factory-sealed staples in <strong>baht per gram</strong> rather than baht per package.
+            </p>
+            <p class="rn-meta">
+                <span>Baseline {{ baseline_date }} = 100</span>
+                <span class="sep">·</span>
+                <span>Latest composite {{ latest_index }}</span>
+                <span class="sep">·</span>
+                <span>{{ cumulative_growth }} pts cumulative growth</span>
+                <span class="sep">·</span>
+                <span>Smoothing: {{ metadata.smoothing_applied }}</span>
+            </p>
+        </header>
+
+        <section id="brief" class="rn-section">
+            <h2>1. Executive summary</h2>
+            <p>
+                The macroeconomic environment of Thailand in the 2025–2026 operational cycle presents a structural complexity that challenges localized financial forecasting, retail consumption analysis, and equity valuation in the Fast-Moving Consumer Goods (FMCG) sector. Official state metrics &mdash; predominantly the headline Consumer Price Index (CPI) &mdash; broadcast a deflationary or near-zero inflation environment, finalizing 2025 with a full-year deflationary figure of <strong>&minus;0.14%</strong>. However, this statistical deflation is heavily influenced by state subsidies on energy and structural weightings, which can diverge from the degradation of real purchasing power experienced by the Thai working and middle classes.
+            </p>
+            <p>
+                Retail consumers report acute inflationary pressure, a reality driven by aggressive corporate margin-protection strategies. To navigate rising input costs without triggering consumer backlash through nominal price hikes, FMCG manufacturers and retail conglomerates frequently deploy <strong>Price Pack Architecture (PPA)</strong>. This manifests prominently as "shrinkflation" &mdash; stealthy reductions in product weight or volume. Because traditional CPI methodologies sample nominal shelf prices across a broad basket, they can structurally lag in capturing these stealth volume reductions in real-time, rendering the official inflation rate partially decoupled from street-level economic reality.
+            </p>
+            <p>
+                To address this macroeconomic blind spot, this research proposes the <strong>Thai Street Survival Index (TSSI)</strong> &mdash; a localized, shrinkflation-adjusted composite metric engineered to track the unadulterated cost of baseline survival in Thailand. Transitioning from theoretical proposal to a live pilot, the TSSI isolates the actual trajectory of localized purchasing power.
+            </p>
+
+            <div class="pillars">
+                <div class="pillar">
+                    <span class="pillar-tag">Pillar 1</span>
+                    <h3>Granular Price Per Unit (PPU) tracking</h3>
+                    <p>The TSSI tracks the exact price per gram and price per millilitre of its underlying assets. This mathematical conversion forces corporate shrinkflation to register immediately as an inflationary spike.</p>
+                </div>
+                <div class="pillar">
+                    <span class="pillar-tag">Pillar 2</span>
+                    <h3>Empirically weighted micro-basket</h3>
+                    <p>Five standardized, factory-sealed, non-substitutable Thai staples. Weights are derived from the NSO Household Socio-Economic Survey (COICOP 2018).</p>
+                </div>
+                <div class="pillar">
+                    <span class="pillar-tag">Pillar 3</span>
+                    <h3>Institutional-grade data architecture</h3>
+                    <p>Automated Python/Playwright scraping of Thailand's dominant e-commerce endpoints, smoothed with a 7-day rolling median to trim promotional noise.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="scr" class="rn-section">
+            <h2>2. Context and rationale: the macroeconomic disconnect</h2>
+
+            <h3>The situation: CPI weighting and supply-side dynamics</h3>
+            <p>
+                Entering 2026, Thailand's macroeconomic profile exhibits the hallmarks of a stagnant economy. Official data released by the Ministry of Commerce and the Bank of Thailand (BOT) indicates that the headline CPI spent much of 2025 in negative territory, ending the year at <strong>&minus;0.14%</strong>. This trend deepened in early 2026, with CPI remaining constrained near the 100.27 point mark by March 2026 (a YoY inflation rate of <strong>&minus;0.08%</strong>).
+            </p>
+            <p>
+                Energy and raw food constitute 30&ndash;40% of the national CPI basket; consequently, these two volatile categories dictate roughly <strong>90% of the movement</strong> in Thailand's headline inflation. Since late 2025, the Thai government has implemented heavy subsidies on electricity bills and domestic fuel to cap energy costs, while favourable weather temporarily suppressed raw food prices. When these highly weighted, state-managed categories are stripped away, <strong>core inflation remained positive</strong>, accelerating slightly to +0.60% year-over-year in early 2026.
+            </p>
+
+            <h3>The complication: Price-Pack Architecture and shrinkflation</h3>
+            <p>
+                While energy costs are subsidized, FMCG corporations face the unyielding realities of rising global supply chain costs. To protect profit margins, these entities utilize Price Pack Architecture &mdash; the systematic optimization of a product portfolio via manipulation of price points, packaging configurations, and product attributes.
+            </p>
+            <p>
+                When manufacturers understand that the consumer is highly price-elastic, they deploy PPA to execute hidden price increases &mdash; primarily <strong>shrinkflation (volume downsizing)</strong>, maintaining the nominal shelf price while covertly reducing net weight or volume. In Thailand, this phenomenon is rampant; an Ipsos survey found that <strong>39% of Thai consumers</strong> actively noticed reductions in product sizes while prices remained static.
+            </p>
+
+            <h3>The resolution: a PPU-adjusted micro-basket</h3>
+            <p>
+                To definitively bypass the smoothing effect of broad-basket subsidies and corporate Price Pack Architecture, macroeconomic analysts require a supplementary framework. The resolution is the TSSI &mdash; a targeted micro-basket comprising factory-sealed, culturally ubiquitous goods, tracked exclusively by their price per unit. By narrowing focus to highly inelastic assets and using automated extraction to track the exact cost per gram and millilitre, the TSSI creates a mathematical baseline of survival costs that reflects the reality of purchasing power.
+            </p>
+        </section>
+
+        <section id="method" class="rn-section">
+            <h2>3. Methodology and mechanics: the architecture of the TSSI</h2>
+
+            <h3>3.1 Basket asset definition, selection, and weighting</h3>
+            <p>
+                The TSSI basket contains five standardized items mapped to the Thai NSO's Classification of Individual Consumption by Purpose (COICOP 2018). See Appendix A.1 for the full derivation matrix.
+            </p>
+            <ul class="asset-list">
+                <li><strong>Asset A &mdash; Raw carbohydrate (Mahboonkrong Jasmine Rice 5 kg):</strong> 25%. The absolute fundamental staple of the Thai diet; a vital anchor for un-subsidized, raw caloric cost.</li>
+                <li><strong>Asset B &mdash; Processed carbohydrate (Mama Tom Yum Koong pack):</strong> 15%. Extreme nominal-price rigidity (6 baht pegged 14 years before moving to 7 baht) makes the pack a highly sensitive gauge of underlying raw-material inflation.</li>
+                <li><strong>Asset C &mdash; Prepared protein (7-Eleven EZYGO Kaphrao chilled box):</strong> 35%. CP All's 14k-store retail footprint makes EZYGO pricing a de facto national standard, stripping vendor portion variability.</li>
+                <li><strong>Asset D &mdash; Essential hydration (Crystal Drinking Water 600 ml):</strong> 15%. A standardized, factory-sealed 600 ml PET bottle captures fundamental liquid-intake costs without luxury markups.</li>
+                <li><strong>Asset E &mdash; Labour stimulant (M-150 150 ml glass bottle):</strong> 10%. A pristine proxy for the fundamental cost of sustaining blue-collar Thai labour.</li>
+            </ul>
+
+            <h3>3.2 Data intake architecture and legal compliance</h3>
+            <p>
+                The TSSI employs a fully automated programmatic web-scraping pipeline targeting the primary digital endpoints of Thai retail (7-Eleven delivery API, Shopee, Lazada). The extraction layer is built on Playwright &mdash; a headless browser automation framework capable of fully rendering dynamic DOM elements and JavaScript-heavy e-commerce architectures.
+            </p>
+            <p>
+                <strong>Legal and ethical compliance.</strong> The extraction protocol strictly targets publicly available retail pricing data. It collects no Personally Identifiable Information, in full compliance with Thailand's Personal Data Protection Act (PDPA) B.E. 2562. Polite request rates and <code>robots.txt</code> are honoured; no authorization mechanisms are bypassed.
+            </p>
+            <p>
+                <strong>Imputation and fallbacks.</strong> Recognizing the inherent fragility of web scraping, the database employs a forward-fill (<code>ffill</code>) methodology: if a scrape fails or an item is temporarily out of stock, the previous day's PPU is carried forward. To protect data integrity, any asset experiencing a scrape failure for <strong>more than 3 consecutive days</strong> is flagged as <em>structurally missing</em> rather than imputed, and the composite weight is renormalized across remaining assets.
+            </p>
+
+            <h3>3.3 Composite score calculation and noise smoothing</h3>
+            <p>
+                The quantitative engine calculates the Price Per Unit (PPU) for each asset as a database <strong>GENERATED ALWAYS</strong> column:
+            </p>
+            <pre class="formula">PPU = nominal_price / net_weight (or net_volume)</pre>
+            <p>
+                The composite index applies the NSO-derived weights to each asset's relative PPU, anchored to a normalized baseline of 100 on {{ baseline_date }}:
+            </p>
+            <pre class="formula">TSSI(t) = ( Σᵢ  Wᵢ · PPUᵢ(t) / PPUᵢ(0) ) × 100</pre>
+            <p>
+                <strong>Addressing data volatility.</strong> E-commerce platforms use algorithmic dynamic pricing and short-lived promotions that diverge from static physical retail shelf prices. The TSSI applies a <strong>7-day rolling median filter</strong> to per-asset PPU before composite calculation, trimming outlier promotional discounts and isolating the structural trajectory.
+            </p>
+        </section>
+
+        <section id="limitations" class="rn-section">
+            <h2>4. Methodological limitations</h2>
+            <ol class="limits">
+                <li>
+                    <h4>The skimpflation paradox</h4>
+                    <p>The TSSI scores exceptionally high on shrinkflation resistance (anchored to physical weight) but cannot detect <em>skimpflation</em> &mdash; the degradation of ingredient quality. If a manufacturer holds a 90 g pack weight constant but substitutes premium oils for cheaper palm oil, the PPU registers zero change. The TSSI therefore has a downward directional bias, likely understating true inflation.</p>
+                </li>
+                <li>
+                    <h4>E-commerce vs physical divergence</h4>
+                    <p>Despite rolling-median smoothing, relying on digital delivery endpoints means the index maintains a slight bias toward e-commerce pricing dynamics, which may occasionally decouple from provincial, cash-based physical retail.</p>
+                </li>
+                <li>
+                    <h4>Pipeline fragility</h4>
+                    <p>Web scraping commercial platforms is inherently brittle. Unannounced DOM restructuring requires continuous manual maintenance of the Playwright extraction scripts.</p>
+                </li>
+            </ol>
+        </section>
+
+        <section id="proxies" class="rn-section">
+            <h2>5. Alternative proxy analysis</h2>
+            <p>
+                The TSSI is evaluated against other frequently cited Thai inflation proxies. Rubric anchors: 10 = absolute standardization, mathematically resistant to manipulation; 5 = partial standardization, vulnerable to alteration; 1 = subjective, detached from survival consumption.
+            </p>
+            <div class="table-wrap">
+                <table class="alt-proxy">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th class="num">Data rigidity</th>
+                            <th class="num">Cultural relevance</th>
+                            <th class="num">Shrinkflation resistance</th>
+                            <th>Editorial verdict</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-highlight">
+                            <td class="proxy-name">TSSI (proposed micro-basket)</td>
+                            <td class="num">9.0</td>
+                            <td class="num">9.0</td>
+                            <td class="num">8.5</td>
+                            <td class="verdict">PPU-adjusted, five factory-sealed staples.</td>
+                        </tr>
+                        <tr>
+                            <td class="proxy-name">Café Amazon Index</td>
+                            <td class="num">8.0</td>
+                            <td class="num">5.0</td>
+                            <td class="num">4.0</td>
+                            <td class="verdict">Vulnerable to skimpflation (ice-to-liquid ratio).</td>
+                        </tr>
+                        <tr>
+                            <td class="proxy-name">BTS Skytrain Commute Index</td>
+                            <td class="num">9.0</td>
+                            <td class="num">4.0</td>
+                            <td class="num">8.0</td>
+                            <td class="verdict">Bangkok-only; politically subsidized fares.</td>
+                        </tr>
+                        <tr>
+                            <td class="proxy-name">Gold / Baht Correlation</td>
+                            <td class="num">10.0</td>
+                            <td class="num">N/A</td>
+                            <td class="num">10.0</td>
+                            <td class="verdict">Capital flow, not retail consumption.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="validation" class="rn-section">
+            <h2>6. Illustrative results (pilot series)</h2>
+            <p>
+                The numbers below are generated by the live calc engine against the pilot observation set described in <a href="#provenance">Appendix A.2</a>. They are <em>illustrative of how the framework behaves on Thai food&#8209;category price dynamics</em>, not an empirical finding about shrinkflation in Thailand. A genuine &ldquo;phantom spread&rdquo; claim between TSSI and headline CPI requires the Tier&nbsp;1 / Tier&nbsp;2 data described in the <a href="#roadmap">roadmap</a>; until then the composite's drift inherits the shape of the BoT food&#8209;CPI sub&#8209;series anchored to hand&#8209;curated retail estimates.
+            </p>
+            <p>
+                From a normalized baseline of 100 on {{ baseline_date }}, the pilot composite reaches <strong>{{ latest_index }}</strong> as of {{ today }} &mdash; a cumulative drift of <strong>{{ cumulative_growth }} points</strong> under the current 5&#8209;asset NSO&#8209;derived weighting scheme.
+            </p>
+            <p>
+                Decomposition of that drift across the basket (ranked by cumulative PPU change):
+            </p>
+            <ul class="decomp-quick">
+                {% for d in decomposition %}
+                <li>
+                    <strong>{{ d.display_name }}</strong> &mdash; <span class="delta delta-{{ d.delta_class }}">{{ d.delta_pct }}</span>
+                    <span class="muted">(weight {{ d.weight_pct }}%; {{ d.coicop_category }})</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section id="appendix" class="rn-section appendix">
+            <h2>Appendix A · Statistical validation &amp; backtest results</h2>
+
+            <h3>A.1 NSO COICOP 2018 to TSSI weight mapping</h3>
+            <p>
+                The TSSI basket weights are derived by mapping each asset to an NSO COICOP sub-category. COICOP category-level shares are empirically sourced from NSO data; intra-category sub-splits (e.g. rice vs instant noodles) are author-estimated from secondary retail consumption-frequency data.
+            </p>
+            <div class="table-wrap">
+                <table class="nso">
+                    <thead>
+                        <tr>
+                            <th>COICOP 2018 category</th>
+                            <th>TSSI basket asset</th>
+                            <th class="num">Normalized weight</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in nso_table %}
+                        <tr>
+                            <td>{{ r.coicop }}</td>
+                            <td>{{ r.asset }}</td>
+                            <td class="num">{{ r.weight_pct }}</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="totals">
+                            <td colspan="2">TOTAL ISOLATED BASKET</td>
+                            <td class="num">100%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <h3 id="provenance">A.2 Time-series data provenance (as shipped)</h3>
+            <p>
+                Historical series reconstructed over <strong>{{ appendix_a2.total_days }} days</strong>, generating <strong>{{ appendix_a2.total_observations }} observations</strong>. The shares below are computed live against the published observation set &mdash; what the pipeline actually uses, not what the framework eventually aspires to:
+            </p>
+            <ul class="stat-list">
+                <li>Live Python / Playwright scrapes (Lazada / Shopee / 7&#8209;Eleven): <strong>{{ appendix_a2.pct_scrape }}%</strong></li>
+                <li>Wayback Machine e&#8209;commerce archives: <strong>{{ appendix_a2.pct_archive }}%</strong></li>
+                <li>Hand&#8209;curated retail seed anchors (receipts, news, manual estimates): <strong>{{ appendix_a2.pct_seed }}%</strong></li>
+                <li>BoT food&#8209;CPI&#8209;derived interstitials (seed anchor &times; monthly CPI, interpolated daily): <strong>{{ appendix_a2.pct_derived }}%</strong></li>
+            </ul>
+            <p class="muted" style="margin-top: 12px;">
+                <strong>Honest read of the current numbers.</strong> As shipped, the index is dominated by CPI&#8209;derived interstitials anchored to hand&#8209;curated retail estimates. This means the cumulative drift shown on the chart reflects the shape of Thailand's official food&#8209;CPI rescaled by the five NSO&#8209;derived weights &mdash; <em>not</em> empirically observed shrinkflation from e&#8209;commerce pricing. The calc engine, 7&#8209;day smoothing filter, 3&#8209;day ffill cap with structural&#8209;missing flag, weight renormalization, and API contract are however production&#8209;grade and drop&#8209;in ready for real observations; swapping the source table leaves the entire framework unchanged. See <a href="#roadmap">the data roadmap</a> for the graduation path.
+            </p>
+
+            <h3>A.3 Descriptive statistics &amp; volatility metrics</h3>
+            <p>
+                Analysis window: trailing {{ appendix_a3.sample_size }} days ({{ appendix_a3.window_start }} &ndash; {{ appendix_a3.window_end }}). Values computed against the post-smoothing composite index:
+            </p>
+            <ul class="stat-list">
+                <li>Mean TSSI: <strong>{{ appendix_a3.mean }}</strong></li>
+                <li>Median TSSI: <strong>{{ appendix_a3.median }}</strong></li>
+                <li>Standard deviation: <strong>{{ appendix_a3.stddev }}</strong> (post 7-day median filter)</li>
+                <li>Min / Max: <strong>{{ appendix_a3.min }} / {{ appendix_a3.max }}</strong></li>
+                <li>Coefficient of variation: <strong>{{ appendix_a3.cv_pct }}%</strong></li>
+            </ul>
+            <p class="muted">
+                Values reported here are generated by the live calc engine at render time &mdash; any drift between the brief text and the current pipeline is resolved in favour of the pipeline.
+            </p>
+
+            <h4>Divergence testing (planned, not yet applicable)</h4>
+            <p>
+                Divergence testing against headline CPI is a planned deliverable, not a current finding. The intended procedure interpolates monthly official CPI to daily via cubic spline, aligns it with the smoothed TSSI, then runs an <strong>Engle&ndash;Granger cointegration test</strong> on the two series; failure to reject the null of no cointegration (<em>p</em> &gt; 0.05) would be evidence the TSSI and headline CPI have structurally decoupled. This test is deliberately <em>not reported</em> on the current series because a CPI&#8209;derived index cannot be validly tested for cointegration with CPI itself &mdash; the result would be spurious by construction. The test becomes meaningful once the index is powered by Tier&nbsp;1 / Tier&nbsp;2 data (see roadmap below).
+            </p>
+
+            <h3>A.4 Per-asset PPU trajectory &amp; decomposition</h3>
+            <div class="table-wrap">
+                <table class="decomp-table">
+                    <thead>
+                        <tr>
+                            <th>Asset</th>
+                            <th>COICOP</th>
+                            <th class="num">Weight</th>
+                            <th class="num">PPU (baseline)</th>
+                            <th class="num">PPU (latest)</th>
+                            <th class="num">Δ vs baseline</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in decomposition %}
+                        <tr>
+                            <td>{{ d.display_name }}</td>
+                            <td>{{ d.coicop_category }}</td>
+                            <td class="num">{{ d.weight_pct }}%</td>
+                            <td class="num">฿ {{ d.baseline_ppu }} / {{ d.unit }}</td>
+                            <td class="num">฿ {{ d.current_ppu }} / {{ d.unit }}</td>
+                            <td class="num delta-{{ d.delta_class }}">{{ d.delta_pct }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="api" class="rn-section">
+            <h2>Appendix B · Technical &amp; API documentation</h2>
+            <p>
+                The TSSI maintains a live RESTful API serving daily smoothed PPU values and composite index scores. The response for <code>GET /api/v1/tssi/current</code> carries per-asset nominal price, net weight, and unit-aware PPU plus imputation flags and pipeline metadata:
+            </p>
+            <pre class="formula">GET /api/v1/tssi/current
+GET /api/v1/tssi/historical?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
+GET /api/v1/tssi/assets/ppu?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD</pre>
+            <p class="method-link">
+                <a href="/docs" target="_blank" rel="noopener">OpenAPI documentation &rarr;</a>
+            </p>
+        </section>
+
+        <section id="roadmap" class="rn-section">
+            <h2>Appendix C · Data roadmap (how this pilot graduates to production)</h2>
+            <p>
+                The current pilot ships a complete framework powered by a CPI&#8209;derived backbone. The roadmap below is the explicit path for retiring that backbone in favour of fully independent observations. Each tier is additive: moving to Tier&nbsp;2 does not require abandoning Tier&nbsp;1.
+            </p>
+            <ol class="limits">
+                <li>
+                    <h4>Tier 1 &middot; Official Thai government price data (spine)</h4>
+                    <p>Replace the CPI&#8209;interpolation layer with direct retail price series from the Bank of Thailand Statistical Data Warehouse and the Department of Internal Trade (DIT) weekly bulletins. Both are free, public, legally scrapeable, and cover rice, instant noodles, and bottled water directly. Expected impact: CPI&#8209;derived share drops from ~88% to &lt;10% of observations, replaced by first&#8209;party government retail surveys. New adapter: <code>app/backfill/bot_sdw.py</code>, <code>app/backfill/dit_bulletin.py</code>.</p>
+                </li>
+                <li>
+                    <h4>Tier 2 &middot; Manual weekly panel (shrinkflation signal)</h4>
+                    <p>One human, one reference 7&#8209;Eleven, five SKUs, one photo each, one weekly CSV commit. This is the only tier that actually captures shrinkflation &mdash; net weight off the package, price off the shelf, photo audit trail in <code>data/receipts/</code>. Optionally opened to public contributors via a <code>/submit</code> form with admin review before rows land in <code>data/observations.csv</code>.</p>
+                </li>
+                <li>
+                    <h4>Tier 3 &middot; Opportunistic e&#8209;commerce scraping (cross&#8209;check)</h4>
+                    <p>The existing Playwright pipeline is retained but reframed as a <em>second opinion</em>, not the primary feed. Replace placeholder URLs in <code>app/scraper/assets.py</code> with canonical product pages; cap Tier&nbsp;3's weight at &le;20% of any day's composite so a DOM break or bot&#8209;challenge on Lazada / Shopee / 7&#8209;Eleven Delivery never invalidates the index. Honoured robots.txt, polite rates, PDPA compliant.</p>
+                </li>
+                <li>
+                    <h4>Tier 4 &middot; Historical backfill via Wayback (government bulletins)</h4>
+                    <p>Point the existing Wayback CDX adapter at <code>dit.go.th</code> weekly bulletin PDFs, not at e&#8209;commerce product pages. Archive coverage of government bulletins is dense and URL&#8209;stable, yielding a real multi&#8209;year backbone with ~50 lines of scraping code.</p>
+                </li>
+                <li>
+                    <h4>Divergence testing</h4>
+                    <p>Once Tiers 1&ndash;2 dominate the observation set, the Pearson + Engle&ndash;Granger cointegration test described in <a href="#provenance">A.2</a> becomes statistically meaningful and will be reported here with the test statistic and p&#8209;value.</p>
+                </li>
+            </ol>
+            <p class="muted">
+                The full framework &mdash; five&#8209;asset COICOP&#8209;mapped basket, PPU calculation, 3&#8209;day ffill cap with structural&#8209;missing flagging, 7&#8209;day rolling median smoothing, weight renormalization, and Appendix B API contract &mdash; is source&#8209;agnostic. Swapping source tiers is a data&#8209;layer change only; nothing in the calc engine or API surface needs to move.
+            </p>
+        </section>
+
+    </article>
+
+    <footer class="footer">
+        <div class="footer-inner">
+            <span class="brand-name">TSSI</span>
+            <span class="sep">—</span>
+            <span>Thai Street Survival Index</span>
+            <span class="sep">—</span>
+            <a href="/">Home</a>
+            <span class="sep">·</span>
+            <a href="/docs" target="_blank" rel="noopener">OpenAPI</a>
+        </div>
+    </footer>
+</body>
+</html>
