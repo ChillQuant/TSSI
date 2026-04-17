@@ -42,8 +42,8 @@ pre-rendered HTML/JSON (same URLs as the live FastAPI app).
 2. **Add New… → Project** → import this GitHub repository.
 3. Vercel will read `vercel.json`. Confirm:
   - **Framework Preset**: Other (or “No framework”).
-  - **Install Command**: `python3 -m pip install -r requirements-static.txt`
-  - **Build Command**: `python3 scripts/build_static.py --clean`
+  - **Install Command**: `npm install` (see [`package.json`](../package.json) — avoids Python serverless auto-detection)
+  - **Build Command**: `npm run build` (runs pip + [`scripts/build_static.py`](../scripts/build_static.py))
   - **Output Directory**: `dist`
 4. Deploy. Production URL will look like `https://<project>.vercel.app`.
 

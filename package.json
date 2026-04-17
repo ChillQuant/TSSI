@@ -1,0 +1,11 @@
+{
+  "name": "tssi",
+  "private": true,
+  "description": "Vercel runs `npm run build` so the project is treated as a static npm build (avoids Python serverless auto-detection). The real build is Python.",
+  "scripts": {
+    "build": "python3 -m pip install -r requirements-static.txt && python3 scripts/build_static.py --clean"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

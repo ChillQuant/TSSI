@@ -15,6 +15,7 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+node_modules/
 playwright-report/
 test-results/
 dist/
