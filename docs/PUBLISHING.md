@@ -29,9 +29,11 @@ it even once the project grows.
 
 ## Vercel (alternative)
 
-The repo ships `[vercel.json](../vercel.json)`: install → run
-`[scripts/build_static.py](../scripts/build_static.py)` → serve `dist/`,
-plus **rewrites** so `/methodology` and `/api/v1/tssi/`* resolve to the
+The repo ships `[vercel.json](../vercel.json)`: it installs
+`[requirements-static.txt](../requirements-static.txt)` (no Playwright — stays
+under Vercel’s **245 MB** deployment limit), runs
+`[scripts/build_static.py](../scripts/build_static.py)`, then serves `dist/`,
+with **rewrites** so `/methodology` and `/api/v1/tssi/`* resolve to the
 pre-rendered HTML/JSON (same URLs as the live FastAPI app).
 
 ### One-time setup
@@ -40,7 +42,7 @@ pre-rendered HTML/JSON (same URLs as the live FastAPI app).
 2. **Add New… → Project** → import this GitHub repository.
 3. Vercel will read `vercel.json`. Confirm:
   - **Framework Preset**: Other (or “No framework”).
-  - **Install Command**: `python3 -m pip install -r requirements.txt`
+  - **Install Command**: `python3 -m pip install -r requirements-static.txt`
   - **Build Command**: `python3 scripts/build_static.py --clean`
   - **Output Directory**: `dist`
 4. Deploy. Production URL will look like `https://<project>.vercel.app`.

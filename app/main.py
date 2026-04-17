@@ -73,19 +73,21 @@ if _demo_env_enabled():
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Startup: verify we can talk to TimescaleDB. A failure here is logged but
-    # non-fatal — the /ready endpoint surfaces the live state so orchestration
-    # layers can decide when to route traffic.
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-        logger.info("startup db probe: ok")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("startup db probe failed: %s", exc)
+    # Startup: verify we can talk to TimescaleDB. Skip when STATIC_MODE — there is
+    # no real DB (CSV shim), so probing only produces noisy SSL/DNS warnings on
+    # hosts like Vercel during ``build_static.py``.
+    if not _static_env_enabled():
+        try:
+            async with AsyncSessionLocal() as session:
+                await session.execute(text("SELECT 1"))
+            logger.info("startup db probe: ok")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("startup db probe failed: %s", exc)
     try:
         yield
     finally:
-        await dispose_engine()
+        if not _static_env_enabled():
+            await dispose_engine()
 
 
 def create_app() -> FastAPI:

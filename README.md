@@ -272,7 +272,7 @@ request.
 | `scripts/backfill_to_csv.py` | One-time seed: runs the Phase 7 adapters (seed, Wayback, BoT CPI) and appends their output to `data/observations.csv`. |
 | `app/db/csv_session.py` | In-memory `AsyncSession` shim that answers the three SQL statements the calc engine issues, sourced from the CSV. |
 | `scripts/build_static.py` | Renders `/` and the `/api/v1/tssi/*` JSON endpoints via FastAPI's `TestClient` into a self-contained `dist/` tree. |
-| `vercel.json` | Optional: Vercel install/build/output + URL rewrites for `/methodology` and `/api/v1/tssi/*`. |
+| `vercel.json` + `requirements-static.txt` | Vercel: slim pip install (no Playwright) + static build + URL rewrites. |
 | `.github/workflows/deploy.yml` | On push to `main`, rebuilds `dist/` and publishes it to Cloudflare Pages. |
 | `docs/PUBLISHING.md` | One-time setup for **Cloudflare Pages** or **Vercel** (free tiers). |
 

@@ -14,7 +14,6 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.deps import require_api_key
-from app.scraper.pipeline import run_ingestion
 from app.scraper.schemas import IngestionReport
 
 logger = logging.getLogger(__name__)
@@ -45,6 +44,9 @@ async def trigger_scrape() -> IngestionReport:
         )
 
     async with _ingestion_lock:
+        # Import here so static builds / slim installs (no Playwright) can load the app.
+        from app.scraper.pipeline import run_ingestion
+
         logger.info("scraper trigger: starting ingestion run")
         report = await run_ingestion()
         logger.info(
